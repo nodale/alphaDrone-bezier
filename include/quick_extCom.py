@@ -5,10 +5,10 @@ import socket
 
 @dataclass
 class QuickExtCom:
-    def __init__(self, hostAddress='localhost', port=65432, baudrate=57600):
+    def __init__(self, hostAddress='localhost', hostPort=65432, baudrate=57600, **kwargs):
         self.com = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.com.bind((hostAddress, port))
+            self.com.bind((hostAddress, hostPort))
         except:
             print(f"binding failed")
             return
@@ -27,6 +27,7 @@ class QuickExtCom:
             print(f"failed to accept connection")
 
         print(f"REDIS ENGAGED")
+        super().__init__(**kwargs)
 
     def unpackVicon(self, state):
         try:

@@ -1,31 +1,36 @@
 from dataclasses import dataclass
 
+from quick_mavlink import QuickMav
+from quick_extCom import QuickExtCom
+
 import numpy as np
 
 @dataclass
-class QuickState:
-    
-    pos : np.zeros(3) #x, y, z
-    vel : np.zeros(3) #vx, vy, vz
-    q : np.zeros(4) #w, x, y, z
-    rot : np.zeros(3) #roll, pitch, yaw
-    rotRates : np.zeros(3) #rates : roll, pitch, yaw
-
-    posP : np.zeros(3) #x, y, z
-    velP : np.zeros(3) #vx, vy, vz
-    rotP : np.zeros(3) #roll, pitch, yaw
-    qP : np.zeros(4) #w, x, y, z
-
-    posFil : np.zeros(3) #x, y, z
-    velFil : np.zeros(3) #vx, vy, vz
-    qFil : np.zeros(4) #w, x, y, z
-    rotFil : np.zeros(3) #roll, pitch, yaw
-    rotRatesFil : np.zeros(3) #rates : roll, pitch, yaw
-
+class QuickState(QuickMav, QuickExtCom):
     alphaPos : float = 1.0
     alphaVel : float = 1.0
     alphaQ  : float = 1.0
     alphaRot : float = 1.0
+
+    def __init__(self, **kwargs):
+        self.pos = np.zeros(3)       # x, y, z
+        self.vel = np.zeros(3)       # vx, vy, vz
+        self.q = np.zeros(4)         # quaternion: w, x, y, z
+        self.rot = np.zeros(3)       # roll, pitch, yaw
+        self.rotRates = np.zeros(3)  # roll, pitch, yaw rates
+
+        self.posP = np.zeros(3)  # x, y, z
+        self.velP = np.zeros(3)  # vx, vy, vz
+        self.rotP = np.zeros(3)  # roll, pitch, yaw
+        self.qP = np.zeros(4)    # quaternion: w, x, y, z
+
+        self.posFil = np.zeros(3)       # x, y, z
+        self.velFil = np.zeros(3)       # vx, vy, vz
+        self.qFil = np.zeros(4)         # quaternion: w, x, y, z
+        self.rotFil = np.zeros(3)       # roll, pitch, yaw
+        self.rotRatesFil = np.zeros(3)  # roll, pitch, yaw rates
+
+        super().__init__(**kwargs)
 
     def getEulerRates(self, dt):
         _q1 = np.array([self.q[0], self.q[1], self.q[2], self.q[3]])
@@ -65,11 +70,11 @@ class QuickState:
     def q2Euler(self):
         _sinr_cosp = 2 * (self.q[0] * self.q[1] + self.q[2] * self.q[3])
         _cosr_cosp = 1 - 2 * (self.q[1]**2 + self.q[2]**2)
-        self.[0] = math.atan2(_sinr_cosp, _cosr_cosp)
+        self.rot[0] = math.atan2(_sinr_cosp, _cosr_cosp)
 
         _sinp = 2 * (self.q[0] * self.q[2] - self.q[3] * self.q[1])
         _sinp = max(-1.0, min(1.0, _sinp))  #clamp
-        self.[1] = math.asin(_sinp)
+        self.rot[1] = math.asin(_sinp)
 
         _siny_cosp = 2 * (self.q[0] * self.q[3] + self.q[1] * self.q[2])
         _cosy_cosp = 1 - 2 * (self.q[2]**2 + self.q[3]**2)

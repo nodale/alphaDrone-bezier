@@ -2,30 +2,26 @@ from dataclasses import dataclass
 
 from tra_spline import CubicSpline
 from tra_planner import LinearLocalPlanner
-from quick_mavlink import QuickMav
-from quick_extCom import QuickExtCom
 from quick_state import QuickState
 
 import sys, select
 import time
 
 @dataclass
-class QuickBezier(QuickMav, QuickExtCom, QuickState):
+class QuickBezier(QuickState):
     pVel : float = 0.1 #projected velocity
     step : float = 1.0
 
-    def __init__(self, address='localhost:14550', baudrate=57600, external=False):
-        #initialising MAVLink
-        QuickMav.__init__(address, baudrate)
-        self.master.sendheartbeat()
-        self.master.setFlightmode('OFFBOARD')
+    def __init__(self, address='localhost:14550', baudrate=57600, hostAddress='localhost', hostPort=12345, **kwargs):
+        super().__init__(address=address, baudrate=baudrate, hostAddress=hostAddress, hostPort=hostPort, **kwargs)
 
-        #initialising external communication
-        if external == True:
-            QuickExtCom.__init__(self, address, baudrate)
+        #initialising MAVLink
+        self.sendHeartbeat()
+        self.setFlightmode('OFFBOARD')
+        self.refeed()
 
         self.splineList = []
-        self.llp = LinearLocalPlanner(self.spline_list, self.pVel)
+        self.llp = LinearLocalPlanner(self.splineList, self.pVel)
         print("BEZIER ENGAGED")
 
     def initNudge(self):
@@ -45,7 +41,7 @@ class QuickBezier(QuickMav, QuickExtCom, QuickState):
         _val2 = max(min(random.uniform(_min_val, _max_val), _max_val), _min_val)
         _val3 = max(min(random.uniform(_min_val, _max_val), _max_val), _min_val)
 
-        _py = self.pos[1],
+        _py = [self.pos[1],
               _val1,
               _val2,
               _val3]
