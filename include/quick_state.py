@@ -22,6 +22,11 @@ class QuickState:
     rotFil : np.zeros(3) #roll, pitch, yaw
     rotRatesFil : np.zeros(3) #rates : roll, pitch, yaw
 
+    alphaPos : float = 1.0
+    alphaVel : float = 1.0
+    alphaQ  : float = 1.0
+    alphaRot : float = 1.0
+
     def getEulerRates(self, dt):
         _q1 = np.array([self.q[0], self.q[1], self.q[2], self.q[3]])
         _q2 = np.array([self.qP[0], self.qP[1], self.qP[2], self.qP[3]])
@@ -79,7 +84,22 @@ class QuickState:
     def lpf(new_value, prev_value, alpha=0.6):
         return alpha * new_value + (1 - alpha) * prev_value
 
-    def filter(position=False, velocity=False, quat=False, rotation=False):
+    def filter(self, position=False, velocity=False, quat=False, rotation=False):
         if position==True:
-           #make a for loop to filter each 
-            lpf(pos)
+            for i in self.pos:
+                self.posFil[i] = lpf(self.pos[i], self.posP[i], self.alphaPos)
+
+        if velocity==True:
+            for i in self.vel:
+                self.velFil[i] = lpf(self.vel[i], self.velP[i], self.alphaVel)
+
+        if quat==True:
+            for i in self.quat:
+                self.qFil[i] = lpf(self.q[i], self.qP[i], self.alphaQ)
+
+        if rotation==True:
+            for i in self.rot:
+                self.rotFil[i] = lpf(self.rot[i], self.rotP[i], self.alphaRot)
+
+    #TODO
+    #create a filter based on successive gradient
