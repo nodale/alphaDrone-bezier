@@ -4,7 +4,7 @@ import msgpack
 import socket
 
 @dataclass
-class extCom:
+class ExtCom:
     def __init__(self, hostAddress='localhost', port=65432, baudrate=57600):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -28,18 +28,26 @@ class extCom:
 
         print(f"REDIS ENGAGED")
 
-    def unpack(self):
-        self.unpacker = msgpack.Unpacker(raw=False)
+    def unpackVicon(self, state):
+        try:
+            self.unpacker = msgpack.Unpacker(raw=False)
 
-        _chunk = self.conn.recv(2048)
-        
-        self.unpacker.feed(_chunk)
+            _chunk = self.conn.recv(2048)
+            
+            self.unpacker.feed(_chunk)
 
-        for _msg in self.unpacker:
-            if isinstance(msg, list) and len(_msg) > 0 and isinstance(_msg[0], dict):
-                _data = _msg[0]
-                _translation, _translation_flag = _data['translation']
-                _quanternion, _quanternion_flag = _data['quanternion']
-                _velocity = _data['velocity']
+            for _msg in self.unpacker:
+                if isinstance(msg, list) and len(_msg) > 0 and isinstance(_msg[0], dict):
+                    _data = _msg[0]
+                    _translation, _translation_flag = _data['translation']
+                    _quaternion, _quaternion_flag = _data['quanternion']
+                    _velocity = _data['velocity']
 
-                #unpack data here
+                    #unpack data here
+                    state.pos = _translation
+                    state.v = _velocity
+                    state.q = _quaternion
+        except:
+            print("failed unpacking vicon data")
+
+    
