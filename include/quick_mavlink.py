@@ -7,11 +7,19 @@ import time
 
 @dataclass
 class QuickMav:
+    freq : float = 50
+    timeBoot : float = 0.0
+
     def __init__(self, address='localhost:14550', baudrate=57600):
+    self.timeBoot = time.time()
         try:
             self.master = mavutil.mavlink_connection(address, baudrate)
         except:
             print("error in __init__, MAVlink refuses to connect, maybe wrong address or baudrate")
+
+    def setFreq(self, nfreq):
+        self.freq = nfreq
+
     def sendHeartbeat(self):
         try:
             print("sending heartbeat")
@@ -40,7 +48,7 @@ class QuickMav:
 
         print("MAVLINK ENGAGED")
 
-    def setFlightMode(self, mode):
+    def setFlightmode(self, mode):
         self.master.set_mode(mode)
     
         print("flight mode is set to ", mode)
@@ -83,6 +91,22 @@ class QuickMav:
         )
 
         self.master.mav.send(vodom)
+
+    def refeed(self):
+        _translation = self.get(self, 'LOCAL_POSITION_NED', True)
+        _ang = self.get(self, 'ATTITUDE', True)
+        _q = self.get(self, 'ODOMETRY', True)
+
+        _time = time.time() * 1e6
+
+        self.sendOdometry(
+                self, 
+                _time, 
+                [_translation.x, _translation.y, _translation.z],
+                [_q.q],
+                [_translation.vx, _translation.vy, _translation.vz],
+                [_ang.rollspeed, _ang.pitchspeed, _ang.yawspeed]
+                )
 
     def sendVelocityTarget(self, time, vx, vy, vz): 
         self.master.mav.set_position_target_local_ned_send(

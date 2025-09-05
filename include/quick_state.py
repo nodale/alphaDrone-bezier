@@ -87,19 +87,19 @@ class QuickState:
     def filter(self, position=False, velocity=False, quat=False, rotation=False):
         if position==True:
             for i in self.pos:
-                self.posFil[i] = lpf(self.pos[i], self.posP[i], self.alphaPos)
+                self.posFil[i] = self.lpf(self.pos[i], self.posP[i], self.alphaPos)
 
         if velocity==True:
             for i in self.vel:
-                self.velFil[i] = lpf(self.vel[i], self.velP[i], self.alphaVel)
+                self.velFil[i] = self.lpf(self.vel[i], self.velP[i], self.alphaVel)
 
         if quat==True:
             for i in self.quat:
-                self.qFil[i] = lpf(self.q[i], self.qP[i], self.alphaQ)
+                self.qFil[i] = self.lpf(self.q[i], self.qP[i], self.alphaQ)
 
         if rotation==True:
             for i in self.rot:
-                self.rotFil[i] = lpf(self.rot[i], self.rotP[i], self.alphaRot)
+                self.rotFil[i] = self.lpf(self.rot[i], self.rotP[i], self.alphaRot)
 
     #TODO
     #create a filter based on successive gradient

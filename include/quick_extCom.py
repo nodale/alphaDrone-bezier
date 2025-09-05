@@ -4,24 +4,24 @@ import msgpack
 import socket
 
 @dataclass
-class ExtCom:
+class QuickExtCom:
     def __init__(self, hostAddress='localhost', port=65432, baudrate=57600):
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.com = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.s.bind((hostAddress, port))
+            self.com.bind((hostAddress, port))
         except:
             print(f"binding failed")
             return
 
         try:
-            self.s.listen()
+            self.com.listen()
             print(f"listening on {hostAddress}:{port}")
         except:
             print(f"failed to listen")
             return
 
         try:
-            self.conn, self.addr = self.s.accept()
+            self.conn, self.addr = self.com.accept()
             print(f"connection from {self.addr}")
         except:
             print(f"failed to accept connection")
