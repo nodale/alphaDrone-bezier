@@ -44,7 +44,7 @@ def plot_splines_from_txt(fig, filename):
 
     return fig
 
-df = pd.read_csv("b.txt", 
+df = pd.read_csv("pos.txt", 
                  sep=r"\s+",   
                  header=None)
 
@@ -68,15 +68,15 @@ fig.add_trace(go.Scatter(
     mode="lines", name="Trajectory 2"
 ))
 #
-scale = 0.5
-for i in range(len(df)):
-    fig.add_trace(go.Scatter(
-        x=[df["x2"][i], df["x2"][i] + df["x3"][i] * scale],
-        y=[df["y2"][i], df["y2"][i] + df["y3"][i] * scale],
-        mode="lines+markers",
-        line=dict(color="red", width=1),
-        marker=dict(size=0.4),
-    ))
+#scale = 0.5
+#for i in range(len(df)):
+#    fig.add_trace(go.Scatter(
+#        x=[df["x2"][i], df["x2"][i] + df["x3"][i]],
+#        y=[df["y2"][i], df["y2"][i] + df["y3"][i]],
+#        mode="lines+markers",
+#        line=dict(color="red", width=1),
+#        marker=dict(size=0.4),
+#    ))
 
 plot_splines_from_txt(fig, 'bezier.txt')
 
