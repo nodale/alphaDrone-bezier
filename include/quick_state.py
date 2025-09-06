@@ -4,6 +4,7 @@ from quick_mavlink import QuickMav
 from quick_extCom import QuickExtCom
 
 import numpy as np
+import time
 
 @dataclass
 class QuickState(QuickMav, QuickExtCom):
@@ -11,6 +12,8 @@ class QuickState(QuickMav, QuickExtCom):
     alphaVel : float = 1.0
     alphaQ  : float = 1.0
     alphaRot : float = 1.0
+
+    dt : float = 0.1   
 
     def __init__(self, **kwargs):
         self.pos = np.zeros(3)       # x, y, z
@@ -29,10 +32,57 @@ class QuickState(QuickMav, QuickExtCom):
         self.qFil = np.zeros(4)         # quaternion: w, x, y, z
         self.rotFil = np.zeros(3)       # roll, pitch, yaw
         self.rotRatesFil = np.zeros(3)  # roll, pitch, yaw rates
+        
+        self.timeC = time.time()
+        self.timeP = time.time()
 
         super().__init__(**kwargs)
 
-    def getEulerRates(self, dt):
+    def updateRefeedState(self):
+        _translation = self.get('LOCAL_POSITION_NED', True)
+        _ang = self.get('ATTITUDE', True)
+        _q = self.get('ATTITUDE_QUATERNION', True)
+
+        self.pos = [_translation.x, _translation.y, _translation.z]
+        self.q = [_q.q1, _q.q2, _q.q3, _q.q4]
+        self.vel = [_translation.vx, _translation.vy, _translation.vz]
+        self.rot = [_ang.roll, _ang.pitch, _ang.yaw]
+        self.rotRates = [_ang.rollspeed, _ang.pitchspeed, _ang.yawspeed]
+
+        self.timeC = time.time()
+        self.dt = self.timeC - self.timeP
+        self.timeP = self.timeC
+
+    def updateViconState(self):
+        try:
+            self.unpacker = msgpack.Unpacker(raw=False)
+
+            _chunk = self.conn.recv(2048)
+            
+            self.unpacker.feed(_chunk)
+
+            for _msg in self.unpacker:
+                if isinstance(msg, list) and len(_msg) > 0 and isinstance(_msg[0], dict):
+                    _data = _msg[0]
+                    _translation, _translation_flag = _data['translation']
+                    _quaternion, _quaternion_flag = _data['quanternion']
+                    _velocity = _data['velocity']
+
+                    #unpack data here
+                    self.pos = _translation
+                    self.vel = _velocity
+                    self.q = _quaternion
+                    self.q2Euler()
+                    self.getEulerRates()
+
+            self.timeC = time.time()
+            self.dt = self.timeC - self.timeP
+            self.timeP = self.timeC
+        except:
+            print("failed unpacking vicon data")
+
+
+    def getEulerRates(self):
         _q1 = np.array([self.q[0], self.q[1], self.q[2], self.q[3]])
         _q2 = np.array([self.qP[0], self.qP[1], self.qP[2], self.qP[3]])
         
@@ -52,7 +102,7 @@ class QuickState(QuickMav, QuickExtCom):
         if _angle < 1e-8:
             return np.zeros(3)
         _axis = _q_rel[1:] / np.sin(angle/2)
-        _omega = (_angle/dt) * _axis
+        _omega = (_angle/self.dt) * _axis
         
         _w, _x, _y, _z = _q1
         _roll  = np.arctan2(2*(_w*_x + _y*_z), 1 - 2*(_x*_x + _y*_y))
@@ -65,7 +115,7 @@ class QuickState(QuickMav, QuickExtCom):
             [0, np.sin(_phi)/np.cos(_theta), np.cos(_phi)/np.cos(_theta)]
         ])
 
-        rotRates = _T @ _omega 
+        self.rotRates = _T @ _omega 
 
     def q2Euler(self):
         _sinr_cosp = 2 * (self.q[0] * self.q[1] + self.q[2] * self.q[3])

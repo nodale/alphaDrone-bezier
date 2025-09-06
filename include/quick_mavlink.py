@@ -77,7 +77,7 @@ class QuickMav:
 
     def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.002]*21, cov2=[0.002]*21):
         vodom = mavlink2.MAVLink_odometry_message(
-            time & 0xFFFFFFFF,
+            time,
             mavutil.mavlink.MAV_FRAME_LOCAL_NED,
             mavutil.mavlink.MAV_FRAME_BODY_FRD,
             pos[0], pos[1], pos[2],
@@ -96,22 +96,21 @@ class QuickMav:
     def refeed(self):
         _translation = self.get('LOCAL_POSITION_NED', True)
         _ang = self.get('ATTITUDE', True)
-        _q = self.get('ODOMETRY', True)
+        _q = self.get('ATTITUDE_QUATERNION', True)
 
-        _time = time.time() * 1e6
+        _time = int(time.time() * 1e6) & 0xFFFFFFFF
 
         self.sendOdometry(
-                self, 
                 _time, 
                 [_translation.x, _translation.y, _translation.z],
-                [_q.q],
+                [_q.q1, _q.q2, _q.q3, _q.q4],
                 [_translation.vx, _translation.vy, _translation.vz],
                 [_ang.rollspeed, _ang.pitchspeed, _ang.yawspeed]
                 )
 
     def sendVelocityTarget(self, time, vx, vy, vz): 
         self.master.mav.set_position_target_local_ned_send(
-            time & 0xFFFFFFFF,
+            time,
             self.master.target_system,
             self.master.target_component,
             mavutil.mavlink.MAV_FRAME_LOCAL_NED,
@@ -124,7 +123,7 @@ class QuickMav:
 
     def sendPositionTarget(self, time, x, y, z): 
         self.master.mav.set_position_target_local_ned_send(
-            time & 0xFFFFFFFF,
+            time,
             self.master.target_system,
             self.master.target_component,
             mavutil.mavlink.MAV_FRAME_LOCAL_NED,

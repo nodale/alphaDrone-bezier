@@ -29,26 +29,3 @@ class QuickExtCom:
         print(f"REDIS ENGAGED")
         super().__init__(**kwargs)
 
-    def unpackVicon(self, state):
-        try:
-            self.unpacker = msgpack.Unpacker(raw=False)
-
-            _chunk = self.conn.recv(2048)
-            
-            self.unpacker.feed(_chunk)
-
-            for _msg in self.unpacker:
-                if isinstance(msg, list) and len(_msg) > 0 and isinstance(_msg[0], dict):
-                    _data = _msg[0]
-                    _translation, _translation_flag = _data['translation']
-                    _quaternion, _quaternion_flag = _data['quanternion']
-                    _velocity = _data['velocity']
-
-                    #unpack data here
-                    state.pos = _translation
-                    state.v = _velocity
-                    state.q = _quaternion
-        except:
-            print("failed unpacking vicon data")
-
-    

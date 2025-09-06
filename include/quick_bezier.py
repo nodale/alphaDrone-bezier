@@ -4,7 +4,9 @@ from tra_spline import CubicSpline
 from tra_planner import LinearLocalPlanner
 from quick_state import QuickState
 
-import sys, select
+import numpy as np
+
+import sys, select, signal, random
 import time
 
 @dataclass
@@ -15,6 +17,8 @@ class QuickBezier(QuickState):
     def __init__(self, address='localhost:14550', baudrate=57600, hostAddress='localhost', hostPort=12345, **kwargs):
         super().__init__(address=address, baudrate=baudrate, hostAddress=hostAddress, hostPort=hostPort, **kwargs)
 
+        self.velCommand = np.zeros(2)
+
         #initialising MAVLink
         self.sendHeartbeat()
         self.setFlightmode('OFFBOARD')
@@ -22,6 +26,9 @@ class QuickBezier(QuickState):
 
         self.splineList = []
         self.llp = LinearLocalPlanner(self.splineList, self.pVel)
+        
+        signal.signal(signal.SIGINT, self.printBezier)
+
         print("BEZIER ENGAGED")
 
     def initNudge(self):
@@ -51,87 +58,129 @@ class QuickBezier(QuickState):
         self.splineList.append(_bez_curve)
       
     def getVelSetpoint(self):
-        self.llp.update_position(np.array([self.pos[0], slef.pos[1]]))
-        _direction = self.llp.get_control_target(np.array([self.pos[0], self.pos[1]]))
-        return direction[0], direction[1]
+        self.llp.update_position(np.array([self.pos[0], self.pos[1]]))
+        self.velCommand = self.llp.get_control_target(np.array([self.pos[0], self.pos[1]]))
+
+        self.velCommand[0] = np.clip(self.velCommand[0],-1,1) 
+        self.velCommand[1] = np.clip(self.velCommand[1],-1,1)
+
+    def _updateRefeedState(self):
+        self.refeed()
+        self.updateRefeedState()
+        self.allocatePrev()
+
 
     def takeoff(self, z):
         print("attempting to take off")
 
         for i in range(100):
-            self.sendPositionTarget(_time, self.pos[0], self.splineList[0, 2], z)
+            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            self._updateRefeedState()
+            self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
-        arm()
-        for i in range(100):
-            self.sendPositionTarget(_time, self.pos[0], self.splineList[0, 2], z)
+        self.arm()
+        for i in range(200):
+            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            self._updateRefeedState()
+            self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
 
     def go2FirstCurve(self):
-        _time = int(time.time * 1e6)
+        print("press enter to engage bezier")
         while True:
-            self.sendPositionTarget(_time, self.splineList[0, 1], self.splineList[0, 2], -1.0)
-
+            self._updateRefeedState()
+            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            self.sendPositionTarget(_time, self.splineList[0].p0[0], self.splineList[0].p0[1], -1.0)
+            self.show({'local position': self.pos})
             time.sleep(1/self.freq)
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:   
                 _line = sys.stdin.readline()
-                if l_ine.strip() == "":
+                if _line.strip() == "":
                     print("BEZIER ENGAGED")
                     break
 
-    #for debugging or visualisation
-    def resetFiles():
-        _filename = 'log/pos.txt'
-        with open(_filename, 'w') as _f:
-            _f.write('x1\ty1\tz1\tx2\ty2\tz2\tx_sp\ty_sp\tz_sp\tt\n')
+    def traverseCurve(self):
+        self._updateRefeedState()
+        self.getVelSetpoint()
+        _currentTime = int(time.time() * 1e6) & 0xFFFFFFFF
+        self.sendVelocityTarget(_currentTime, self.velCommand[0], self.velCommand[1], 0.0)
+        time.sleep(1/self.freq)
+        self.show({"local position": self.pos,
+                  "closest point" : self.llp.closest_u
+                   })
 
-        _filename_q = 'log/q.txt'
-        with open(_filename_q, 'w') as _fq:
+    #for debugging or visualisation
+    def resetLogFiles(self):
+        self.filename = 'log/pos.txt'
+        with open(self.filename, 'w') as _f:
+            #_f.write('x1\ty1\tz1\tx2\ty2\tz2\tx_sp\ty_sp\tz_sp\tt\n')
+            _f.write('\n')
+
+        self.filename_q = 'log/q.txt'
+        with open(self.filename_q, 'w') as _fq:
             _fq.write('x1\ty1\tz1\tx2\ty2\tz2\tt\n')
 
-        _filename_ang = 'log/ang.txt'
-        with open(_filename_ang, 'w') as _fa:
+        self.filename_ang = 'log/ang.txt'
+        with open(self.filename_ang, 'w') as _fa:
             _fa.write('x1\ty1\tz1\tx2\ty2\tz2\tt\n')
 
-        _filename_v = 'log/vel.txt'
-        with open(_filename_v, 'w') as _fv:
+        self.filename_v = 'log/vel.txt'
+        with open(self.filename_v, 'w') as _fv:
             _fv.write('x1\ty1\tz1\tx2\ty2\tz2\tx_sp\ty_sp\tz_sp\tt\n')
 
-        _filename_b = 'log/b.txt'
-        with open(_filename_b, 'w') as _fb:
+        self.filename_b = 'log/b.txt'
+        with open(self.filename_b, 'w') as _fb:
             _fb.write('\n')
 
-        _filename_bezier = 'log/bezier.txt'
-        with open(_filename_bezier, 'w') as _fbezier:
+        self.filename_bezier = 'log/bezier.txt'
+        with open(self.filename_bezier, 'w') as _fbezier:
             _fbezier.write('\n')
 
-    def append_bezier(signum=None, frame=None):
+    def printBezier(self, signum=None, frame=None):
         with open('log/bezier.txt', "w") as f:
-            for curve in self.splineList:
-                for points in curve:
-                    for x, y in points:
-                        f.write(f"{x} {y}\n")
-                    f.write("\n") 
+            for cubicList in self.splineList:
+                x, y = cubicList.p0
+                f.write(f"{x} {y}\n")
+
+                x, y = cubicList.p1
+                f.write(f"{x} {y}\n")
+
+                x, y = cubicList.p2
+                f.write(f"{x} {y}\n")
+
+                x, y = cubicList.p3
+                f.write(f"{x} {y}\n")
+                f.write("\n") 
         sys.exit(0)
 
 
-    def printData(x1, y1, z1, x2, y2, z2, t, name):
+    def printData(self, x1, y1, z1, x2, y2, z2, t, name):
         row = np.array([[x1, y1, z1, x2, y2, z2, t]])
         with open(name, 'a') as f:
             np.savetxt(f, row, fmt='%.6f', delimiter='\t')
 
-    def printDataSP(x1, y1, z1, x2, y2, z2, x_sp, y_sp, z_sp, t, name):
+    def printDataSP(self, x1, y1, z1, x2, y2, z2, x_sp, y_sp, z_sp, t, name):
         row = np.array([[x1, y1, z1, x2, y2, z2, x_sp, y_sp, z_sp, t]])
         with open(name, 'a') as f:
             np.savetxt(f, row, fmt='%.6f', delimiter='\t')
 
-    def printAll():
+    def printAll(self):
     #quaternion debug
-        append_row(self.q[1], self.q[2], self.q[3], self.qFil[0], self.qFil[1], self.qFil[2], time.time() - self.timeBoot, filename_q)
+        self.printData(self.q[1], self.q[2], self.q[3], self.qFil[0], self.qFil[1], self.qFil[2], time.time() - self.timeBoot, self.filename_q)
     #angle debug
-        append_row(self.rot[0], self.rot[1], self.rot[2], self.rot[0], self.rot[1], self.rot[2], time.time() - self.timeBoot, filename_ang)
+        self.printData(self.rot[0], self.rot[1], self.rot[2], self.rot[0], self.rot[1], self.rot[2], time.time() - self.timeBoot, self.filename_ang)
     #pos debug
-        append_row_pos(self.pos[0], self.pos[1], self.pos[2], self.pos[0], self.pos[1], self.pos[2], 0, 0, 0, time.time() - self.timeBoot, filename)
+        self.printDataSP(self.pos[0], self.pos[1], self.pos[2], self.pos[0], self.pos[1], self.pos[2], 0, 0, 0, time.time() - self.timeBoot, self.filename)
     #vel debug
-        append_row_pos(self.vel[0], self.vel[1], self.vel[2], self.vel[0], self.vel[1], self.vel[2], 0, 0, 0, time.time() - self.timeBoot, filename_v)
+        self.printDataSP(self.vel[0], self.vel[1], self.vel[2], self.vel[0], self.vel[1], self.vel[2], self.velCommand[0], self.velCommand[1], 0, time.time() - self.timeBoot, self.filename_v)
 
+    def show(self, values, precision=3):
+        sys.stdout.write("\033[F" * len(values))  
 
+        for name, obj in values.items():
+            if isinstance(obj, (int, float)):
+                formatted = f"{obj:.{precision}f}"
+            else:
+                formatted = str(obj)
+            print(f"DEBUG : {name} = {formatted}")
+        sys.stdout.flush()
