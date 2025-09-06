@@ -2,3 +2,4 @@ gazebo/
 real/
 *.pyc
 log/*
+include/__pycache__/

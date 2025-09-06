@@ -48,7 +48,6 @@ class LinearLocalPlanner:
         return u
 
     def update_position(self, pos):
-        #self.current_position = pos.reshape(-1, 1)
         self.current_position = pos
         max_iter = 100
         conv_threshold = 0.0001
@@ -68,7 +67,7 @@ class LinearLocalPlanner:
             p_2prime = curve.get_second_derivative(u)
 
             grad = np.dot(p.T, p_prime) / (np.dot(p_prime.T, p_prime) + np.dot(p.T, p_2prime))
-            print(grad.item())
+            #print(grad.item())
             if np.isnan(grad).any():
                 break
             
@@ -87,7 +86,7 @@ class LinearLocalPlanner:
             self.transition()
 
         self.closest_u = self.current_u
-        print("this is the closest point ", self.closest_u)
+        #print("this is the closest point ", self.closest_u)
 
 
     def get_current_curve(self):
@@ -112,7 +111,7 @@ class LinearLocalPlanner:
     def get_current_curvature(self):
         curve = self.spline_list[self.current_curve_i]
         curvature = curve.get_curvature(self.closest_u)
-        print("this is the current curvature ", curvature)
+        #print("this is the current curvature ", curvature)
         return curvature
 
     def get_closest_point(self):
