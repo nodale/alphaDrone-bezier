@@ -1,2 +1,4 @@
 gazebo/
 real/
+*.pyc
+log/*
