@@ -39,11 +39,10 @@ class QuickMav:
         self.master.mav.command_long_send(
                 self.master.target_system,
                 self.master.target_component,
-                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  
-                0,                                             
-                93,                             
-                10000,                                   
-                0, 0, 0, 0, 0                                  
+                mavutil.mavlink.MAV_DATA_STREAM_POSITION,  
+                1,                                             
+                100,
+                0,0,0,0,0,0
                 )
 
         print("MAVLINK ENGAGED")
@@ -73,7 +72,7 @@ class QuickMav:
         print("DRONE DISARMED")
 
     def get(self, TYPE, block=True):
-        return self.master.recv_match(type=TYPE, blocking=False)
+        return self.master.recv_match(type=TYPE, blocking=block)
 
     def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.002]*21, cov2=[0.002]*21):
         vodom = mavlink2.MAVLink_odometry_message(

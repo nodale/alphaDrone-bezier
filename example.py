@@ -5,7 +5,7 @@ from include.quick_bezier import QuickBezier
 
 
 def main():
-    b = QuickBezier()
+    b = QuickBezier(address="localhost:14550", baudrate=57600)
     b.resetLogFiles()
     b.freq = 20
     
